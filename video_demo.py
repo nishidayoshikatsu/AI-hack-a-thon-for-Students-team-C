@@ -12,7 +12,7 @@ import pandas as pd
 import random 
 import pickle as pkl
 import argparse
-
+import os
 
 def get_test_input(input_dim, CUDA):
     img = cv2.imread("dog-cycle-car.png")
@@ -41,13 +41,17 @@ def prep_image(img, inp_dim):
     img_ = torch.from_numpy(img_).float().div(255.0).unsqueeze(0)
     return img_, orig_im, dim
 
-def write(x, img):  # 矩形とラベル名の描画用メソッド
+def write(x, img, i):  # 矩形とラベル名の描画用メソッド
     c1 = x[1:3].int()
     c2 = x[3:5].int()
     cls = int(x[-1])
     label = "{0}".format(classes[cls])  # 描画ラベルの決定
     color = random.choice(colors)
     cv2.rectangle(img, tuple(c1), tuple(c2),color, 1) # bounding boxの描画
+    if not os.path.exists("./video_img/" + str(i)):
+        os.mkdir("./video_img/" + str(i))
+    cv2.imwrite("./video_img/" + str(i) + "/face.jpeg",img[c1[1]:c2[1], c1[0]:c2[0]]) # 顔画像の切り取り
+
     t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1 , 1)[0]
     c2 = c1[0] + t_size[0] + 3, c1[1] + t_size[1] + 4
     cv2.rectangle(img, (c1[0], c1[1]-20), (c2[0], c1[1]), color, -1)    # ラベルボックスの描画
@@ -120,7 +124,7 @@ if __name__ == '__main__':
 
     # 動画の保存設定
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter('./output/output2.avi',fourcc, 30.0, (162,288))   # 540 * 960
+    out = cv2.VideoWriter('./output/output2.avi',fourcc, 2.0, (540,960))   # 540 * 960
     
     assert cap.isOpened(), 'Cannot capture source'
     
@@ -129,7 +133,7 @@ if __name__ == '__main__':
 
     while cap.isOpened():
         ret, frame = cap.read()
-        frame = cv2.resize(frame, (int(frame.shape[1]*0.3), int(frame.shape[0]*0.3)))   # 重いのでリサイズ
+        frame = cv2.resize(frame, (int(frame.shape[1]*1.0), int(frame.shape[0]*1.0)))   # 重いのでリサイズ
         #print(int(frame.shape[0]), int(frame.shape[1]))
         if ret:
             img, orig_im, dim = prep_image(frame, inp_dim)
@@ -169,7 +173,7 @@ if __name__ == '__main__':
             classes = load_classes('./cfg/face/face.names')   # 学習データによってここも変えよう
             colors = pkl.load(open("pallete", "rb"))
             
-            list(map(lambda x: write(x, orig_im), output))  # 文字等の書き込み
+            list(map(lambda x: write(x, orig_im, frames), output))  # 文字等の書き込み
             
             out.write(orig_im)              # 動画の生成
             cv2.imshow("frame", orig_im)
